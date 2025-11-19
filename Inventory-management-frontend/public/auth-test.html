@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin: 15px 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔐 Authentication Test Suite</h1>
+
+    <div class="grid">
+        <div class="container">
+            <h3>1. Login Test</h3>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" value="admin@inventory.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" value="admin123" required>
+                </div>
+
+                <button type="submit" id="loginBtn">Test Login</button>
+                <button type="button" onclick="clearStorage()">Clear Storage</button>
+            </form>
+        </div>
+
+        <div class="container">
+            <h3>2. Token Status</h3>
+            <div id="tokenStatus" class="result info">Click "Check Token" to see current status</div>
+            <button onclick="checkTokenStatus()">Check Token</button>
+            <button onclick="testApiCall()">Test API Call</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h3>3. Test Results</h3>
+        <button onclick="clearResults()">Clear Results</button>
+        <div id="results"></div>
+    </div>
+
+    <div class="container">
+        <h3>4. localStorage Contents</h3>
+        <button onclick="showStorage()">Show Storage</button>
+        <div id="storage" class="result"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            log('All storage cleared', 'info');
+            checkTokenStatus();
+            showStorage();
+        }
+
+        function showStorage() {
+            const storage = document.getElementById('storage');
+            let content = 'localStorage:\n';
+
+            if (localStorage.length === 0) {
+                content += '  (empty)\n';
+            } else {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const value = localStorage.getItem(key);
+                    content += `  ${key}: ${value}\n`;
+                }
+            }
+
+            content += '\nsessionStorage:\n';
+            if (sessionStorage.length === 0) {
+                content += '  (empty)\n';
+            } else {
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    const value = sessionStorage.getItem(key);
+                    content += `  ${key}: ${value}\n`;
+                }
+            }
+
+            storage.textContent = content;
+        }
+
+        function checkTokenStatus() {
+            const tokenStatus = document.getElementById('tokenStatus');
+            const token = localStorage.getItem('token');
+
+            if (token) {
+                try {
+                    // Decode JWT token (basic decode, not verification)
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    const exp = new Date(payload.exp * 1000);
+                    const now = new Date();
+
+                    if (exp > now) {
+                        tokenStatus.innerHTML = `
+                            <div class="success">
+                                ✓ Token found and valid<br>
+                                User ID: ${payload.userId}<br>
+                                Expires: ${exp.toLocaleString()}<br>
+                                Token: ${token.substring(0, 50)}...
+                            </div>
+                        `;
+                    } else {
+                        tokenStatus.innerHTML = `
+                            <div class="error">
+                                ✗ Token expired<br>
+                                Expired: ${exp.toLocaleString()}<br>
+                                Token: ${token.substring(0, 50)}...
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    tokenStatus.innerHTML = `
+                        <div class="error">
+                            ✗ Invalid token format<br>
+                            Token: ${token.substring(0, 50)}...
+                        </div>
+                    `;
+                }
+            } else {
+                tokenStatus.innerHTML = '<div class="error">✗ No token found in localStorage</div>';
+            }
+        }
+
+        async function testLogin(email, password) {
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+
+            log('=== LOGIN TEST STARTED ===');
+            log(`Email: ${email}`);
+            log(`Password: ${password}`);
+
+            try {
+                // Clear existing token
+                localStorage.removeItem('token');
+                log('Cleared existing token');
+
+                // Make login request
+                log('Making login request...');
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                log(`Response status: ${response.status} ${response.statusText}`);
+
+                const data = await response.json();
+                log(`Response data: ${JSON.stringify(data, null, 2)}`);
+
+                if (data.success && data.data && data.data.token) {
+                    log('✓ Login successful!', 'success');
+
+                    // Store token
+                    localStorage.setItem('token', data.data.token);
+                    log(`✓ Token stored: ${data.data.token.substring(0, 50)}...`, 'success');
+
+                    // Verify storage
+                    const storedToken = localStorage.getItem('token');
+                    if (storedToken === data.data.token) {
+                        log('✓ Token verification: SUCCESS', 'success');
+                    } else {
+                        log('✗ Token verification: FAILED', 'error');
+                    }
+
+                    // Update token status
+                    checkTokenStatus();
+                    showStorage();
+
+                } else {
+                    log('✗ Login failed - no token in response', 'error');
+                }
+
+            } catch (error) {
+                log(`✗ Login error: ${error.message}`, 'error');
+                console.error('Login test error:', error);
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Test Login';
+                log('=== LOGIN TEST COMPLETED ===');
+            }
+        }
+
+        async function testApiCall() {
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+                log('✗ No token available for API test', 'error');
+                return;
+            }
+
+            log('=== API CALL TEST STARTED ===');
+            log(`Using token: ${token.substring(0, 50)}...`);
+
+            try {
+                const response = await fetch('/api/auth/me', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log(`API Response status: ${response.status} ${response.statusText}`);
+
+                const data = await response.json();
+                log(`API Response data: ${JSON.stringify(data, null, 2)}`);
+
+                if (response.ok) {
+                    log('✓ API call successful!', 'success');
+                } else {
+                    log('✗ API call failed', 'error');
+                }
+
+            } catch (error) {
+                log(`✗ API call error: ${error.message}`, 'error');
+                console.error('API call error:', error);
+            }
+
+            log('=== API CALL TEST COMPLETED ===');
+        }
+
+        // Event listeners
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            await testLogin(email, password);
+        });
+
+        // Initialize on page load
+        window.onload = function () {
+            log('Authentication test suite loaded', 'info');
+            checkTokenStatus();
+            showStorage();
+        };
+    </script>
+</body>
+
+</html>

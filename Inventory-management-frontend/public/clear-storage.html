@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Storage - Inventory System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        button {
+            background: #0ea5e9;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #0284c7;
+        }
+        .success {
+            color: #22c55e;
+            font-weight: bold;
+        }
+        .info {
+            color: #6b7280;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fix Login Issues</h1>
+        <p class="info">If you're getting JWT token errors, click the button below to clear your browser storage:</p>
+        
+        <button onclick="clearStorageAndRedirect()">
+            Clear Storage & Go to Login
+        </button>
+        
+        <div id="status"></div>
+        
+        <hr style="margin: 30px 0;">
+        
+        <h3>Manual Steps:</h3>
+        <ol style="text-align: left;">
+            <li>Press <strong>F12</strong> to open Developer Tools</li>
+            <li>Go to <strong>Application</strong> tab</li>
+            <li>Expand <strong>Local Storage</strong></li>
+            <li>Select <strong>http://localhost:3000</strong></li>
+            <li>Delete the <strong>token</strong> key</li>
+            <li>Refresh the page</li>
+        </ol>
+    </div>
+
+    <script>
+        function clearStorageAndRedirect() {
+            try {
+                // Clear all localStorage
+                localStorage.clear();
+                
+                // Clear sessionStorage too
+                sessionStorage.clear();
+                
+                // Show success message
+                document.getElementById('status').innerHTML = 
+                    '<p class="success">✅ Storage cleared successfully!</p><p>Redirecting to login...</p>';
+                
+                // Redirect to login after 2 seconds
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+                
+            } catch (error) {
+                document.getElementById('status').innerHTML = 
+                    '<p style="color: red;">❌ Error: ' + error.message + '</p>';
+            }
+        }
+        
+        // Auto-clear if accessed directly
+        if (window.location.search.includes('auto=true')) {
+            clearStorageAndRedirect();
+        }
+    </script>
+</body>
+</html>

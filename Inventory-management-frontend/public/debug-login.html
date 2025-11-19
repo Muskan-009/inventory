@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Debug Login Test</h1>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" value="admin@inventory.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" value="admin123" required>
+            </div>
+            
+            <button type="submit">Test Login</button>
+            <button type="button" onclick="clearResults()">Clear Results</button>
+        </form>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testLogin(email, password) {
+            log('Starting login test...');
+            log(`Email: ${email}`);
+            log(`Password: ${password}`);
+            
+            try {
+                // Clear any existing token
+                localStorage.removeItem('token');
+                log('Cleared existing token from localStorage');
+                
+                // Make login request
+                log('Making login request to /api/auth/login...');
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                log(`Response status: ${response.status}`);
+                log(`Response headers: ${JSON.stringify([...response.headers.entries()])}`);
+                
+                const data = await response.json();
+                log(`Response data: ${JSON.stringify(data, null, 2)}`);
+                
+                if (data.success && data.data && data.data.token) {
+                    log('Login successful! Token received.', 'success');
+                    
+                    // Store token
+                    localStorage.setItem('token', data.data.token);
+                    log(`Token stored in localStorage: ${data.data.token.substring(0, 50)}...`);
+                    
+                    // Verify token was stored
+                    const storedToken = localStorage.getItem('token');
+                    if (storedToken === data.data.token) {
+                        log('Token verification: SUCCESS', 'success');
+                    } else {
+                        log('Token verification: FAILED', 'error');
+                    }
+                    
+                    // Test API call with token
+                    log('Testing API call with stored token...');
+                    const meResponse = await fetch('/api/auth/me', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${storedToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    log(`Me API status: ${meResponse.status}`);
+                    const meData = await meResponse.json();
+                    log(`Me API response: ${JSON.stringify(meData, null, 2)}`);
+                    
+                    if (meResponse.ok) {
+                        log('API call with token: SUCCESS', 'success');
+                    } else {
+                        log('API call with token: FAILED', 'error');
+                    }
+                    
+                } else {
+                    log('Login failed - no token in response', 'error');
+                }
+                
+            } catch (error) {
+                log(`Login error: ${error.message}`, 'error');
+                console.error('Login test error:', error);
+            }
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            await testLogin(email, password);
+        });
+
+        // Show current localStorage on page load
+        window.onload = function() {
+            log('Page loaded. Current localStorage contents:');
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                log(`${key}: ${value}`);
+            }
+        };
+    </script>
+</body>
+</html>
